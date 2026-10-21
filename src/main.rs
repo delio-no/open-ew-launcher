@@ -781,14 +781,14 @@ impl eframe::App for LauncherApp {
                     let mb = self.total_download_bytes as f64 / 1048576.0;
                     let label = if !exe_exists {
                         if mb > 1024.0 {
-                            format!("⬇️ Скачать клиент ({:.2} ГБ)", mb / 1024.0)
+                            format!("▼  Скачать клиент ({:.2} ГБ)", mb / 1024.0)
                         } else {
-                            format!("⬇️ Скачать клиент ({:.1} МБ)", mb)
+                            format!("▼  Скачать клиент ({:.1} МБ)", mb)
                         }
                     } else if mb > 1024.0 {
-                        format!("⬇️ Скачать обновления ({:.2} ГБ)", mb / 1024.0)
+                        format!("▼  Скачать обновления ({:.2} ГБ)", mb / 1024.0)
                     } else {
-                        format!("⬇️ Скачать обновления ({:.1} МБ)", mb)
+                        format!("▼  Скачать обновления ({:.1} МБ)", mb)
                     };
 
                     let btn_update = egui::Button::new(
