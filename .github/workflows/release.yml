@@ -74,8 +74,20 @@ jobs:
           path: release-artifacts
           merge-multiple: true
 
+      - name: Generate SHA256 Checksums
+        run: |
+          cd release-artifacts
+          sha256sum open-ew-launcher-* > SHA256SUMS.txt
+          echo "### SHA256 Checksums" > checksums_body.md
+          echo '```' >> checksums_body.md
+          cat SHA256SUMS.txt >> checksums_body.md
+          echo '```' >> checksums_body.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-artifacts/*
+          files: |
+            release-artifacts/open-ew-launcher-*
+            release-artifacts/SHA256SUMS.txt
+          body_path: release-artifacts/checksums_body.md
           generate_release_notes: true
