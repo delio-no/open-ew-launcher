@@ -534,6 +534,39 @@ impl eframe::App for LauncherApp {
             ctx.request_repaint_after(Duration::from_millis(50));
         }
 
+        let footer_frame = egui::Frame::none()
+            .fill(Color32::from_rgb(22, 26, 36))
+            .inner_margin(Margin::symmetric(14.0, 7.0))
+            .stroke(Stroke::new(1.0, Color32::from_rgb(45, 52, 68)));
+
+        egui::TopBottomPanel::bottom("status_footer")
+            .frame(footer_frame)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    let cfg_path = AppConfig::config_path();
+                    let cfg_display = cfg_path.to_string_lossy().to_string();
+
+                    ui.label(egui::RichText::new("⚙ Файл настроек:").size(12.0).color(Color32::from_rgb(160, 175, 195)));
+                    let link_resp = ui.add(egui::Link::new(
+                        egui::RichText::new(&cfg_display)
+                            .size(12.0)
+                            .monospace()
+                            .color(Color32::from_rgb(147, 197, 253))
+                    ));
+                    if link_resp.on_hover_text("Нажмите, чтобы открыть папку с файлом конфигурации").clicked() {
+                        AppConfig::open_config_folder();
+                    }
+
+                    if ui.add(egui::Button::new("📂 Открыть папку").small().rounding(4.0)).on_hover_text("Открыть директорию с файлом конфигурации").clicked() {
+                        AppConfig::open_config_folder();
+                    }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(egui::RichText::new("v0.1.0").size(12.0).strong().color(Color32::from_rgb(160, 175, 195)));
+                    });
+                });
+            });
+
         let panel_frame = egui::Frame::none()
             .fill(Color32::from_rgb(16, 18, 24))
             .inner_margin(Margin::same(14.0));
@@ -849,8 +882,7 @@ impl eframe::App for LauncherApp {
                 .rounding(Rounding::same(8.0))
                 .inner_margin(Margin::symmetric(10.0, 8.0));
 
-            let footer_height = 24.0;
-            let available_height = (ui.available_height() - footer_height).max(80.0);
+            let available_height = ui.available_height().max(80.0);
 
             log_frame.show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -892,23 +924,6 @@ impl eframe::App for LauncherApp {
                             });
                         }
                     });
-            });
-
-            // ================= BOTTOM STATUS FOOTER =================
-            ui.add_space(2.0);
-            ui.horizontal(|ui| {
-                let cfg_path = AppConfig::config_path();
-                let cfg_display = cfg_path.to_string_lossy().to_string();
-
-                ui.label(egui::RichText::new("⚙ Конфиг:").small().color(Color32::from_rgb(110, 125, 150)));
-                let link_resp = ui.add(egui::Link::new(egui::RichText::new(&cfg_display).small().monospace().color(Color32::from_rgb(147, 197, 253))));
-                if link_resp.on_hover_text("Нажмите, чтобы открыть папку с файлом конфигурации").clicked() {
-                    AppConfig::open_config_folder();
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new("v0.1.0").small().color(Color32::from_rgb(110, 125, 150)));
-                });
             });
         });
     }
