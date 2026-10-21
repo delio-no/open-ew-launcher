@@ -414,8 +414,10 @@ impl LauncherApp {
         }
     }
 
-    fn check_events(&mut self) {
+    fn check_events(&mut self, ctx: &egui::Context) {
+        let mut got_event = false;
         while let Ok(event) = self.rx_event.try_recv() {
+            got_event = true;
             match event {
                 WorkerEvent::Log(msg) => {
                     let level = if msg.starts_with("ОШИБК") || msg.contains("ошибк") || msg.contains("Ошибка") {
@@ -523,15 +525,19 @@ impl LauncherApp {
                 }
             }
         }
+
+        if got_event {
+            ctx.request_repaint();
+        }
     }
 }
 
 impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.check_events();
+        self.check_events(ctx);
 
         if self.is_busy {
-            ctx.request_repaint_after(Duration::from_millis(50));
+            ctx.request_repaint_after(Duration::from_millis(20));
         }
 
         let footer_frame = egui::Frame::none()
@@ -734,6 +740,10 @@ impl eframe::App for LauncherApp {
                         {
                             self.config.game_dir = folder;
                             self.config.save();
+                            self.is_busy = true;
+                            self.progress = 0.0;
+                            self.status_text = "Проверка выбранной папки...".to_string();
+                            self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
                             let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: false });
                         }
                     }
@@ -764,6 +774,10 @@ impl eframe::App for LauncherApp {
                     .rounding(6.0);
                 let resp_fast = ui.add_enabled(!self.is_busy, btn_fast);
                 if resp_fast.on_hover_text("Сверка наличия и размеров файлов (~1-2 сек)").clicked() {
+                    self.is_busy = true;
+                    self.progress = 0.0;
+                    self.status_text = "Быстрая проверка файлов...".to_string();
+                    self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
                     let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: false });
                 }
 
@@ -772,6 +786,10 @@ impl eframe::App for LauncherApp {
                     .rounding(6.0);
                 let resp_full = ui.add_enabled(!self.is_busy, btn_full);
                 if resp_full.on_hover_text("Полная проверка CRC32 контрольных сумм всех файлов клиента").clicked() {
+                    self.is_busy = true;
+                    self.progress = 0.0;
+                    self.status_text = "Полная проверка (сверка CRC32)...".to_string();
+                    self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
                     let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: true });
                 }
 
@@ -801,6 +819,10 @@ impl eframe::App for LauncherApp {
                     .rounding(6.0);
 
                     if ui.add_enabled(!self.is_busy, btn_update).clicked() {
+                        self.is_busy = true;
+                        self.progress = 0.0;
+                        self.status_text = "Подготовка к скачиванию...".to_string();
+                        self.progress_label = "Инициализация...".to_string();
                         let _ = self.tx_cmd.send(WorkerCommand::Update {
                             files: self.outdated_files.clone(),
                         });
@@ -950,6 +972,12 @@ fn worker_thread_loop(
             }
 
             WorkerCommand::Check { full_check } => {
+                let check_type_str = if full_check { "Полная проверка (CRC32)" } else { "Быстрая проверка" };
+                let _ = tx_event.send(WorkerEvent::CheckProgress {
+                    done: 0,
+                    total: 100,
+                    current: format!("{}: загрузка манифеста patchlist.xml...", check_type_str),
+                });
                 let _ = tx_event.send(WorkerEvent::Log(format!("Используется сервер: {}", config.selected_server)));
                 let _ = tx_event.send(WorkerEvent::Log("Загрузка манифеста patchlist.xml с сервера...".into()));
 
@@ -1006,6 +1034,9 @@ fn worker_thread_loop(
                 let outdated = Arc::new(Mutex::new(Vec::new()));
                 let tx_progress = tx_event.clone();
 
+                // Send progress more often for full_check (CRC32 is slow per file)
+                let progress_step = if full_check { 5 } else { 50 };
+
                 all_entries.par_iter().for_each(|entry| {
                     let full_path = game_dir.join(&entry.filename);
                     let mut is_outdated = false;
@@ -1040,7 +1071,7 @@ fn worker_thread_loop(
 
                     let mut c = counter.lock().unwrap();
                     *c += 1;
-                    if *c % 50 == 0 || *c == total {
+                    if *c % progress_step == 0 || *c == total {
                         let _ = tx_progress.send(WorkerEvent::CheckProgress {
                             done: *c,
                             total,
