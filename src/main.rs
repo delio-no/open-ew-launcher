@@ -131,6 +131,20 @@ impl AppConfig {
         PathBuf::from("launcher.json")
     }
 
+    pub fn open_config_folder() {
+        let p = Self::config_path();
+        if let Some(parent) = p.parent() {
+            #[cfg(target_os = "windows")]
+            {
+                let _ = Command::new("explorer").arg(parent).spawn();
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let _ = Command::new("xdg-open").arg(parent).spawn();
+            }
+        }
+    }
+
     pub fn load() -> Self {
         let p = Self::config_path();
         if let Ok(data) = fs::read_to_string(&p) {
@@ -529,15 +543,7 @@ impl eframe::App for LauncherApp {
 
             // ================= HEADER =================
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("⚔").size(22.0).color(Color32::from_rgb(250, 204, 21)));
-                ui.heading(egui::RichText::new("open-ew-launcher").strong().size(20.0).color(Color32::WHITE));
-
-                ui.add_space(4.0);
-                ui.label(
-                    egui::RichText::new("v0.1 • Linux & Windows")
-                        .small()
-                        .color(Color32::from_rgb(148, 163, 184))
-                );
+                ui.heading(egui::RichText::new("Open EndlessWar Launcher").strong().size(21.0).color(Color32::WHITE));
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let btn_text = if self.show_server_settings { "✕ Скрыть серверы" } else { "⚙ Серверы и сеть" };
@@ -660,6 +666,16 @@ impl eframe::App for LauncherApp {
                                 self.new_server_url = "https://".to_string();
                                 let _ = self.tx_cmd.send(WorkerCommand::PingServers { servers: self.config.servers.clone() });
                             }
+                        }
+                    });
+
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("Файл конфигурации:").small().color(Color32::from_rgb(148, 163, 184)));
+                        let cfg_p = AppConfig::config_path();
+                        ui.label(egui::RichText::new(cfg_p.to_string_lossy()).small().monospace().color(Color32::from_rgb(203, 213, 225)));
+                        if ui.add(egui::Button::new("📂 Открыть папку").small()).clicked() {
+                            AppConfig::open_config_folder();
                         }
                     });
                 });
@@ -833,7 +849,8 @@ impl eframe::App for LauncherApp {
                 .rounding(Rounding::same(8.0))
                 .inner_margin(Margin::symmetric(10.0, 8.0));
 
-            let available_height = ui.available_height().max(100.0);
+            let footer_height = 24.0;
+            let available_height = (ui.available_height() - footer_height).max(80.0);
 
             log_frame.show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -850,7 +867,7 @@ impl eframe::App for LauncherApp {
                 ui.separator();
 
                 // Dynamic vertical stretch and 100% full width
-                let scroll_height = (available_height - 38.0).max(60.0);
+                let scroll_height = (available_height - 38.0).max(50.0);
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])
                     .stick_to_bottom(true)
@@ -858,6 +875,7 @@ impl eframe::App for LauncherApp {
                     .show(ui, |ui| {
                         ui.set_width(ui.available_width());
                         ui.set_min_height(scroll_height - 10.0);
+                        ui.spacing_mut().item_spacing.y = 3.0;
 
                         for entry in &self.logs {
                             let color = match entry.level {
@@ -868,12 +886,29 @@ impl eframe::App for LauncherApp {
                             };
 
                             ui.horizontal(|ui| {
-                                ui.spacing_mut().item_spacing.x = 6.0;
-                                ui.label(egui::RichText::new(&entry.time).monospace().small().color(Color32::from_rgb(100, 116, 139)));
-                                ui.label(egui::RichText::new(&entry.text).monospace().small().color(color));
+                                ui.spacing_mut().item_spacing.x = 8.0;
+                                ui.label(egui::RichText::new(&entry.time).monospace().size(13.0).color(Color32::from_rgb(120, 135, 160)));
+                                ui.label(egui::RichText::new(&entry.text).monospace().size(13.0).color(color));
                             });
                         }
                     });
+            });
+
+            // ================= BOTTOM STATUS FOOTER =================
+            ui.add_space(2.0);
+            ui.horizontal(|ui| {
+                let cfg_path = AppConfig::config_path();
+                let cfg_display = cfg_path.to_string_lossy().to_string();
+
+                ui.label(egui::RichText::new("⚙ Конфиг:").small().color(Color32::from_rgb(110, 125, 150)));
+                let link_resp = ui.add(egui::Link::new(egui::RichText::new(&cfg_display).small().monospace().color(Color32::from_rgb(147, 197, 253))));
+                if link_resp.on_hover_text("Нажмите, чтобы открыть папку с файлом конфигурации").clicked() {
+                    AppConfig::open_config_folder();
+                }
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label(egui::RichText::new("v0.1.0").small().color(Color32::from_rgb(110, 125, 150)));
+                });
             });
         });
     }
@@ -1172,12 +1207,12 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([880.0, 620.0])
             .with_min_inner_size([760.0, 480.0])
-            .with_title("open-ew-launcher — EndlessWar"),
+            .with_title("Open EndlessWar Launcher"),
         ..Default::default()
     };
 
     eframe::run_native(
-        "open-ew-launcher",
+        "Open EndlessWar Launcher",
         native_options,
         Box::new(|cc| Ok(Box::new(LauncherApp::new(cc)))),
     )
