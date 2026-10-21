@@ -546,7 +546,7 @@ impl eframe::App for LauncherApp {
                     let cfg_path = AppConfig::config_path();
                     let cfg_display = cfg_path.to_string_lossy().to_string();
 
-                    ui.label(egui::RichText::new("⚙ Файл настроек:").size(12.0).color(Color32::from_rgb(160, 175, 195)));
+                    ui.label(egui::RichText::new("⚙ Конфиг:").size(12.0).color(Color32::from_rgb(160, 175, 195)));
                     let link_resp = ui.add(egui::Link::new(
                         egui::RichText::new(&cfg_display)
                             .size(12.0)
@@ -554,10 +554,6 @@ impl eframe::App for LauncherApp {
                             .color(Color32::from_rgb(147, 197, 253))
                     ));
                     if link_resp.on_hover_text("Нажмите, чтобы открыть папку с файлом конфигурации").clicked() {
-                        AppConfig::open_config_folder();
-                    }
-
-                    if ui.add(egui::Button::new("📂 Открыть папку").small().rounding(4.0)).on_hover_text("Открыть директорию с файлом конфигурации").clicked() {
                         AppConfig::open_config_folder();
                     }
 
