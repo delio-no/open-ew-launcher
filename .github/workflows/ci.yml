@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "master", "main" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -26,17 +30,21 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Install Linux GUI Dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libasound2-dev
+          sudo apt-get install -y pkg-config libfontconfig1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libasound2-dev
 
       - name: Rustfmt Check
+        if: runner.os == 'Linux'
         run: cargo fmt --check
 
       - name: Clippy Check
         run: cargo clippy -- -D warnings
 
-      - name: Build
-        run: cargo build --verbose
+      - name: Test
+        run: cargo test --verbose

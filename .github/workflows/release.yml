@@ -34,11 +34,16 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
       - name: Install Linux GUI Dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libasound2-dev
+          sudo apt-get install -y pkg-config libfontconfig1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libasound2-dev
 
       - name: Build Release Binary
         run: cargo build --release --target ${{ matrix.target }}
@@ -48,25 +53,29 @@ jobs:
         run: |
           cd target/${{ matrix.target }}/release
           tar -czf ../../../${{ matrix.archive_name }} ${{ matrix.bin_name }}
+          cp ${{ matrix.bin_name }} ../../../${{ matrix.bin_name }}
 
       - name: Package Windows Binary
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cd target/${{ matrix.target }}/release
-          Compress-Archive -Path ${{ matrix.bin_name }} -DestinationPath ../../../${{ matrix.archive_name }}
+          Compress-Archive -Path ${{ matrix.bin_name }} -DestinationPath ../../../${{ matrix.archive_name }} -Force
+          Copy-Item ${{ matrix.bin_name }} ../../../${{ matrix.bin_name }}
 
-      - name: Upload Artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.archive_name }}
-          path: ${{ matrix.archive_name }}
+          name: artifacts-${{ matrix.target }}
+          path: |
+            ${{ matrix.archive_name }}
+            ${{ matrix.bin_name }}
 
   publish-release:
     name: Publish Release
     needs: build-release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -77,7 +86,7 @@ jobs:
       - name: Generate SHA256 Checksums
         run: |
           cd release-artifacts
-          sha256sum open-ew-launcher-* > SHA256SUMS.txt
+          sha256sum open-ew-launcher* > SHA256SUMS.txt
           echo "### SHA256 Checksums" > checksums_body.md
           echo '```' >> checksums_body.md
           cat SHA256SUMS.txt >> checksums_body.md
@@ -87,7 +96,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-artifacts/open-ew-launcher-*
+            release-artifacts/open-ew-launcher*
             release-artifacts/SHA256SUMS.txt
           body_path: release-artifacts/checksums_body.md
           generate_release_notes: true

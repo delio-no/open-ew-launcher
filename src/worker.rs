@@ -12,18 +12,14 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub fn worker_thread_loop(
-    mut config: AppConfig,
-    rx_cmd: Receiver<WorkerCommand>,
-    tx_event: Sender<WorkerEvent>,
-) {
+pub fn worker_thread_loop(rx_cmd: Receiver<WorkerCommand>, tx_event: Sender<WorkerEvent>) {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(15))
         .build()
         .unwrap_or_default();
 
     while let Ok(cmd) = rx_cmd.recv() {
-        config = AppConfig::load();
+        let config = AppConfig::load();
 
         match cmd {
             WorkerCommand::PingServers { servers } => {

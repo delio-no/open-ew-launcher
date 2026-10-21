@@ -63,9 +63,8 @@ impl LauncherApp {
         let (tx_cmd, rx_cmd) = channel::<WorkerCommand>();
         let (tx_event, rx_event) = channel::<WorkerEvent>();
 
-        let cfg_clone = config.clone();
         thread::spawn(move || {
-            worker_thread_loop(cfg_clone, rx_cmd, tx_event);
+            worker_thread_loop(rx_cmd, tx_event);
         });
 
         let mut app = Self {
@@ -315,7 +314,7 @@ impl eframe::App for LauncherApp {
         let footer_frame = egui::Frame::none()
             .fill(Color32::from_rgb(22, 26, 36))
             .inner_margin(Margin::symmetric(14.0, 7.0))
-            .stroke(Stroke::new(1.0, Color32::from_rgb(45, 52, 68)));
+            .stroke(Stroke::new(1.0_f32, Color32::from_rgb(45, 52, 68)));
 
         egui::TopBottomPanel::bottom("status_footer")
             .frame(footer_frame)
@@ -415,7 +414,7 @@ impl eframe::App for LauncherApp {
             if self.show_server_settings {
                 let card_frame = egui::Frame::none()
                     .fill(Color32::from_rgb(24, 28, 38))
-                    .stroke(Stroke::new(1.0, Color32::from_rgb(42, 48, 64)))
+                    .stroke(Stroke::new(1.0_f32, Color32::from_rgb(42, 48, 64)))
                     .rounding(Rounding::same(8.0))
                     .inner_margin(Margin::same(12.0));
 
@@ -601,7 +600,7 @@ impl eframe::App for LauncherApp {
             // ================= GAME FOLDER & OPTIONS CARD =================
             let folder_card = egui::Frame::none()
                 .fill(Color32::from_rgb(24, 28, 38))
-                .stroke(Stroke::new(1.0, Color32::from_rgb(42, 48, 64)))
+                .stroke(Stroke::new(1.0_f32, Color32::from_rgb(42, 48, 64)))
                 .rounding(Rounding::same(8.0))
                 .inner_margin(Margin::same(12.0));
 
@@ -781,7 +780,7 @@ impl eframe::App for LauncherApp {
             // ================= PROGRESS & STATUS CARD =================
             let progress_card = egui::Frame::none()
                 .fill(Color32::from_rgb(20, 23, 31))
-                .stroke(Stroke::new(1.0, Color32::from_rgb(38, 44, 58)))
+                .stroke(Stroke::new(1.0_f32, Color32::from_rgb(38, 44, 58)))
                 .rounding(Rounding::same(8.0))
                 .inner_margin(Margin::same(10.0));
 
@@ -825,7 +824,7 @@ impl eframe::App for LauncherApp {
             // ================= EVENT LOG CONSOLE (FULL WIDTH & DYNAMIC HEIGHT) =================
             let log_frame = egui::Frame::none()
                 .fill(Color32::from_rgb(12, 14, 18))
-                .stroke(Stroke::new(1.0, Color32::from_rgb(38, 44, 58)))
+                .stroke(Stroke::new(1.0_f32, Color32::from_rgb(38, 44, 58)))
                 .rounding(Rounding::same(8.0))
                 .inner_margin(Margin::symmetric(10.0, 8.0));
 
