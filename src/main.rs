@@ -898,11 +898,9 @@ impl eframe::App for LauncherApp {
                 let scroll_height = (available_height - 38.0).max(50.0);
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])
-                    .stick_to_bottom(true)
                     .max_height(scroll_height)
                     .show(ui, |ui| {
                         ui.set_width(ui.available_width());
-                        ui.set_min_height(scroll_height - 10.0);
                         ui.spacing_mut().item_spacing.y = 3.0;
 
                         for entry in &self.logs {
