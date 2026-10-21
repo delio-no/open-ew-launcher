@@ -295,7 +295,16 @@ pub enum WorkerCommand {
 
 pub enum WorkerEvent {
     Log(String),
-    CheckProgress { done: usize, total: usize, current: String },
+    CheckStage {
+        stage: String,
+        sub_label: String,
+    },
+    CheckProgress {
+        check_type: String,
+        done: usize,
+        total: usize,
+        current: String,
+    },
     CheckFinished { outdated: Vec<ArchiveEntry>, total_bytes: u64 },
     DownloadProgress {
         file_idx: usize,
@@ -393,13 +402,20 @@ impl LauncherApp {
 
         // Auto trigger initial check and update if enabled
         if app.config.auto_update {
-            let _ = app.tx_cmd.send(WorkerCommand::Check { full_check: false });
-            app.is_busy = true;
-            app.status_text = "Автоматическая проверка обновлений...".to_string();
-            app.add_log("Запущена автоматическая проверка обновлений...", LogLevel::Info);
+            app.start_check(false);
         }
 
         app
+    }
+
+    pub fn start_check(&mut self, full_check: bool) {
+        let check_name = if full_check { "Полная проверка (CRC32)" } else { "Быстрая проверка" };
+        self.is_busy = true;
+        self.progress = 0.0;
+        self.status_text = format!("{} — подключение...", check_name);
+        self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
+        self.add_log(format!("Запуск: {}...", check_name), LogLevel::Info);
+        let _ = self.tx_cmd.send(WorkerCommand::Check { full_check });
     }
 
     fn add_log(&mut self, text: impl Into<String>, level: LogLevel) {
@@ -431,11 +447,18 @@ impl LauncherApp {
                     };
                     self.add_log(msg, level);
                 }
-                WorkerEvent::CheckProgress { done, total, current } => {
+                WorkerEvent::CheckStage { stage, sub_label } => {
+                    self.is_busy = true;
+                    self.status_text = stage;
+                    self.progress = 0.0;
+                    self.progress_label = sub_label;
+                }
+                WorkerEvent::CheckProgress { check_type, done, total, current } => {
                     self.is_busy = true;
                     self.progress = if total > 0 { done as f32 / total as f32 } else { 0.0 };
-                    self.progress_label = format!("Проверка ({}/{}): {}", done, total, current);
-                    self.status_text = format!("Сканирование файлов: {}%", (self.progress * 100.0) as u32);
+                    let percent = (self.progress * 100.0) as u32;
+                    self.status_text = format!("{} — {}% ({}/{})", check_type, percent, done, total);
+                    self.progress_label = format!("Файл: {}", current);
                 }
                 WorkerEvent::CheckFinished { outdated, total_bytes } => {
                     self.is_busy = false;
@@ -740,11 +763,7 @@ impl eframe::App for LauncherApp {
                         {
                             self.config.game_dir = folder;
                             self.config.save();
-                            self.is_busy = true;
-                            self.progress = 0.0;
-                            self.status_text = "Проверка выбранной папки...".to_string();
-                            self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
-                            let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: false });
+                            self.start_check(false);
                         }
                     }
                 });
@@ -774,11 +793,7 @@ impl eframe::App for LauncherApp {
                     .rounding(6.0);
                 let resp_fast = ui.add_enabled(!self.is_busy, btn_fast);
                 if resp_fast.on_hover_text("Сверка наличия и размеров файлов (~1-2 сек)").clicked() {
-                    self.is_busy = true;
-                    self.progress = 0.0;
-                    self.status_text = "Быстрая проверка файлов...".to_string();
-                    self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
-                    let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: false });
+                    self.start_check(false);
                 }
 
                 let btn_full = egui::Button::new("🛠 Полная проверка")
@@ -786,11 +801,7 @@ impl eframe::App for LauncherApp {
                     .rounding(6.0);
                 let resp_full = ui.add_enabled(!self.is_busy, btn_full);
                 if resp_full.on_hover_text("Полная проверка CRC32 контрольных сумм всех файлов клиента").clicked() {
-                    self.is_busy = true;
-                    self.progress = 0.0;
-                    self.status_text = "Полная проверка (сверка CRC32)...".to_string();
-                    self.progress_label = "Загрузка манифеста patchlist.xml с сервера...".to_string();
-                    let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: true });
+                    self.start_check(true);
                 }
 
                 let exe_exists = self.config.game_dir.join("system").join("EndlessWar.exe").exists();
@@ -973,10 +984,9 @@ fn worker_thread_loop(
 
             WorkerCommand::Check { full_check } => {
                 let check_type_str = if full_check { "Полная проверка (CRC32)" } else { "Быстрая проверка" };
-                let _ = tx_event.send(WorkerEvent::CheckProgress {
-                    done: 0,
-                    total: 100,
-                    current: format!("{}: загрузка манифеста patchlist.xml...", check_type_str),
+                let _ = tx_event.send(WorkerEvent::CheckStage {
+                    stage: format!("{} — загрузка манифеста...", check_type_str),
+                    sub_label: "Загрузка списка файлов patchlist.xml с сервера...".to_string(),
                 });
                 let _ = tx_event.send(WorkerEvent::Log(format!("Используется сервер: {}", config.selected_server)));
                 let _ = tx_event.send(WorkerEvent::Log("Загрузка манифеста patchlist.xml с сервера...".into()));
@@ -1028,14 +1038,19 @@ fn worker_thread_loop(
 
                 let total = all_entries.len();
                 let _ = tx_event.send(WorkerEvent::Log(format!("Начало проверки {} файлов клиента...", total)));
+                let _ = tx_event.send(WorkerEvent::CheckProgress {
+                    check_type: check_type_str.to_string(),
+                    done: 0,
+                    total,
+                    current: "Инициализация проверки файлов...".to_string(),
+                });
 
                 let game_dir = config.game_dir.clone();
                 let counter = Arc::new(Mutex::new(0usize));
+                let last_send = Arc::new(Mutex::new(Instant::now()));
                 let outdated = Arc::new(Mutex::new(Vec::new()));
                 let tx_progress = tx_event.clone();
-
-                // Send progress more often for full_check (CRC32 is slow per file)
-                let progress_step = if full_check { 5 } else { 50 };
+                let check_type_owned = check_type_str.to_string();
 
                 all_entries.par_iter().for_each(|entry| {
                     let full_path = game_dir.join(&entry.filename);
@@ -1071,9 +1086,15 @@ fn worker_thread_loop(
 
                     let mut c = counter.lock().unwrap();
                     *c += 1;
-                    if *c % progress_step == 0 || *c == total {
+                    let done = *c;
+                    drop(c);
+
+                    let mut last = last_send.lock().unwrap();
+                    if done == total || done % 5 == 0 || last.elapsed() >= Duration::from_millis(30) {
+                        *last = Instant::now();
                         let _ = tx_progress.send(WorkerEvent::CheckProgress {
-                            done: *c,
+                            check_type: check_type_owned.clone(),
+                            done,
                             total,
                             current: entry.filename.clone(),
                         });
