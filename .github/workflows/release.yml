@@ -53,7 +53,6 @@ jobs:
         run: |
           cd target/${{ matrix.target }}/release
           tar -czf ../../../${{ matrix.archive_name }} ${{ matrix.bin_name }}
-          cp ${{ matrix.bin_name }} ../../../${{ matrix.bin_name }}
 
       - name: Package Windows Binary
         if: runner.os == 'Windows'
@@ -61,15 +60,12 @@ jobs:
         run: |
           cd target/${{ matrix.target }}/release
           Compress-Archive -Path ${{ matrix.bin_name }} -DestinationPath ../../../${{ matrix.archive_name }} -Force
-          Copy-Item ${{ matrix.bin_name }} ../../../${{ matrix.bin_name }}
 
-      - name: Upload Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-${{ matrix.target }}
-          path: |
-            ${{ matrix.archive_name }}
-            ${{ matrix.bin_name }}
+          path: ${{ matrix.archive_name }}
 
   publish-release:
     name: Publish Release
@@ -86,7 +82,7 @@ jobs:
       - name: Generate SHA256 Checksums
         run: |
           cd release-artifacts
-          sha256sum open-ew-launcher* > SHA256SUMS.txt
+          sha256sum open-ew-launcher-* > SHA256SUMS.txt
           echo "### SHA256 Checksums" > checksums_body.md
           echo '```' >> checksums_body.md
           cat SHA256SUMS.txt >> checksums_body.md
@@ -96,7 +92,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-artifacts/open-ew-launcher*
+            release-artifacts/open-ew-launcher-*
             release-artifacts/SHA256SUMS.txt
           body_path: release-artifacts/checksums_body.md
           generate_release_notes: true

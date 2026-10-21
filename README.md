@@ -15,17 +15,17 @@
 Готовые файлы доступны на странице **[Releases](https://github.com/delio-no/open-ew-launcher/releases)**.
 
 ### Linux
-1. Скачайте `open-ew-launcher`.
-2. Разрешите запуск и запустите:
+1. Скачайте архив `open-ew-launcher-linux-x86_64.tar.gz`.
+2. Распакуйте и запустите:
    ```bash
-   chmod +x open-ew-launcher
+   tar -xzf open-ew-launcher-linux-x86_64.tar.gz
    ./open-ew-launcher
    ```
 3. Укажите папку с клиентом игры (или пустую папку, если нужно скачать клиент с нуля).
 
 ### Windows
-1. Скачайте `open-ew-launcher.exe`.
-2. Положите в папку с игрой (или в любое удобное место) и запустите.
+1. Скачайте архив `open-ew-launcher-windows-x86_64.zip`.
+2. Распакуйте в любое удобное место и запустите `open-ew-launcher.exe`.
 
 ---
 
