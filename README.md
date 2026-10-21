@@ -1,5 +1,10 @@
 # Open EndlessWar Launcher
 
+[![CI](https://github.com/your-username/open-ew-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/open-ew-launcher/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue)]()
+[![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange.svg)]()
+
 Быстрый, легкий и открытый лаунчер для игры **Endless War** (на базе Lineage 2).  
 Работает на **Linux** (через PortProton / Wine) и **Windows**.
 
@@ -62,6 +67,6 @@ cargo build --release
 
 ---
 
-## Лицензия
+## 📄 Лицензия
 
-MIT
+Проект распространяется под лицензией [MIT](LICENSE).

@@ -1,1 +1,18 @@
+# Rust build artifacts
 /target
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Windows binaries / PDBs if compiled locally outside target
+*.pdb
+*.exe

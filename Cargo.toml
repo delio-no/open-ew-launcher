@@ -2,6 +2,13 @@
 name = "open-ew-launcher"
 version = "0.1.0"
 edition = "2021"
+authors = ["Open EndlessWar Community"]
+description = "Fast, lightweight native launcher and updater for MMORPG Endless War (Lineage 2 client)"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/your-username/open-ew-launcher"
+keywords = ["launcher", "updater", "endlesswar", "lineage2", "portproton"]
+categories = ["games", "gui"]
 
 [dependencies]
 eframe = "0.28"
@@ -16,3 +23,10 @@ lzma-rs = "0.3"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 url = "2.5"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
