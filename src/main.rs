@@ -27,9 +27,9 @@ pub struct AppConfig {
     pub full_check: bool,
     #[serde(default = "default_auto_update")]
     pub auto_update: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub auto_check: Option<bool>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub auto_download: Option<bool>,
 }
 
