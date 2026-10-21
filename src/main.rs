@@ -12,6 +12,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+pub const GITHUB_REPO_URL: &str = "https://github.com";
+pub const RELEASE_URL: &str = "https://github.com";
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ServerInfo {
     pub name: String,
@@ -587,7 +590,25 @@ impl eframe::App for LauncherApp {
                     }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(egui::RichText::new("v0.1.0").size(12.0).strong().color(Color32::from_rgb(160, 175, 195)));
+                        let link_ver = ui.add(egui::Link::new(
+                            egui::RichText::new("v0.1.0")
+                                .size(12.0)
+                                .strong()
+                                .color(Color32::from_rgb(147, 197, 253))
+                        ));
+                        if link_ver.on_hover_text("Открыть страницу релиза на GitHub").clicked() {
+                            ctx.open_url(egui::OpenUrl::new_tab(RELEASE_URL));
+                        }
+
+                        ui.add_space(8.0);
+                        let link_gh = ui.add(egui::Link::new(
+                            egui::RichText::new("GitHub")
+                                .size(12.0)
+                                .color(Color32::from_rgb(160, 175, 195))
+                        ));
+                        if link_gh.on_hover_text("Открыть репозиторий с исходным кодом на GitHub").clicked() {
+                            ctx.open_url(egui::OpenUrl::new_tab(GITHUB_REPO_URL));
+                        }
                     });
                 });
             });
@@ -607,6 +628,10 @@ impl eframe::App for LauncherApp {
                     let btn_text = if self.show_server_settings { "✕ Скрыть серверы" } else { "⚙ Серверы и сеть" };
                     if ui.button(btn_text).clicked() {
                         self.show_server_settings = !self.show_server_settings;
+                    }
+
+                    if ui.button("⭐ GitHub").on_hover_text("Открыть репозиторий с исходным кодом на GitHub").clicked() {
+                        ctx.open_url(egui::OpenUrl::new_tab(GITHUB_REPO_URL));
                     }
 
                     let active_name = self.config.servers.iter()
