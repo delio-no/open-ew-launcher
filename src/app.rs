@@ -357,12 +357,10 @@ impl eframe::App for LauncherApp {
                         }
 
                         ui.add_space(8.0);
-                        let link_gh = ui.add(egui::Link::new(
-                            egui::RichText::new("GitHub")
-                                .size(12.0)
-                                .color(Color32::from_rgb(160, 175, 195)),
-                        ));
-                        if link_gh
+
+                        let btn_gh = egui::Button::new("⭐ GitHub").small().rounding(4.0);
+                        if ui
+                            .add(btn_gh)
                             .on_hover_text("Открыть репозиторий с исходным кодом на GitHub")
                             .clicked()
                         {
@@ -396,14 +394,6 @@ impl eframe::App for LauncherApp {
                     };
                     if ui.button(btn_text).clicked() {
                         self.show_server_settings = !self.show_server_settings;
-                    }
-
-                    if ui
-                        .button("⭐ GitHub")
-                        .on_hover_text("Открыть репозиторий с исходным кодом на GitHub")
-                        .clicked()
-                    {
-                        ctx.open_url(egui::OpenUrl::new_tab(GITHUB_REPO_URL));
                     }
 
                     let active_name = self

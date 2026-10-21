@@ -6,7 +6,7 @@ authors = ["Open EndlessWar Community"]
 description = "Fast, lightweight native launcher and updater for MMORPG Endless War (Lineage 2 client)"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/your-username/open-ew-launcher"
+repository = "https://github.com/delio-no/open-ew-launcher"
 keywords = ["launcher", "updater", "endlesswar", "lineage2", "portproton"]
 categories = ["games", "gui"]
 

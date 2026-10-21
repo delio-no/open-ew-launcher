@@ -1,6 +1,6 @@
 # Open EndlessWar Launcher
 
-[![CI](https://github.com/your-username/open-ew-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/open-ew-launcher/actions)
+[![CI](https://github.com/delio-no/open-ew-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/delio-no/open-ew-launcher/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue)]()
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange.svg)]()
@@ -12,7 +12,7 @@
 
 ## 🚀 Скачать и запустить
 
-Готовые файлы доступны на странице **[Releases](https://github.com)**.
+Готовые файлы доступны на странице **[Releases](https://github.com/delio-no/open-ew-launcher/releases)**.
 
 ### Linux
 1. Скачайте `open-ew-launcher`.
@@ -45,7 +45,7 @@
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/your-username/open-ew-launcher.git
+git clone https://github.com/delio-no/open-ew-launcher.git
 cd open-ew-launcher
 
 # Собрать релизную версию
