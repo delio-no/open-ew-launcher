@@ -433,11 +433,24 @@ impl LauncherApp {
                         self.game_ready = true;
                         self.add_log("Все файлы клиента проверены и соответствуют серверу.", LogLevel::Success);
                     } else {
+                        let exe_exists = self.config.game_dir.join("system").join("EndlessWar.exe").exists();
                         let mb = total_bytes as f64 / (1024.0 * 1024.0);
-                        self.status_text = format!("Требуется обновление: {} файлов ({:.1} МБ)", outdated.len(), mb);
-                        self.progress_label = format!("Найдено изменений: {} файлов", outdated.len());
+                        let size_str = if mb > 1024.0 {
+                            format!("{:.2} ГБ", mb / 1024.0)
+                        } else {
+                            format!("{:.1} МБ", mb)
+                        };
+
                         self.game_ready = false;
-                        self.add_log(format!("Обнаружено {} устаревших/отсутствующих файлов ({:.1} МБ).", outdated.len(), mb), LogLevel::Warning);
+                        if !exe_exists {
+                            self.status_text = format!("Требуется установка клиента: {} файлов ({})", outdated.len(), size_str);
+                            self.progress_label = format!("Клиент не найден, файлов для загрузки: {}", outdated.len());
+                            self.add_log(format!("Клиент не найден в папке. Всего для установки: {} файлов ({}).", outdated.len(), size_str), LogLevel::Warning);
+                        } else {
+                            self.status_text = format!("Требуется обновление: {} файлов ({})", outdated.len(), size_str);
+                            self.progress_label = format!("Найдено изменений: {} файлов", outdated.len());
+                            self.add_log(format!("Обнаружено {} устаревших/отсутствующих файлов ({}).", outdated.len(), size_str), LogLevel::Warning);
+                        }
 
                         // AUTO-DOWNLOAD if auto_update is enabled!
                         if self.config.auto_update {
@@ -717,10 +730,24 @@ impl eframe::App for LauncherApp {
                     let _ = self.tx_cmd.send(WorkerCommand::Check { full_check: true });
                 }
 
+                let exe_exists = self.config.game_dir.join("system").join("EndlessWar.exe").exists();
+
                 if !self.outdated_files.is_empty() {
                     let mb = self.total_download_bytes as f64 / 1048576.0;
+                    let label = if !exe_exists {
+                        if mb > 1024.0 {
+                            format!("⬇️ Скачать клиент ({:.2} ГБ)", mb / 1024.0)
+                        } else {
+                            format!("⬇️ Скачать клиент ({:.1} МБ)", mb)
+                        }
+                    } else if mb > 1024.0 {
+                        format!("⬇️ Скачать обновления ({:.2} ГБ)", mb / 1024.0)
+                    } else {
+                        format!("⬇️ Скачать обновления ({:.1} МБ)", mb)
+                    };
+
                     let btn_update = egui::Button::new(
-                        egui::RichText::new(format!("⬇️ Скачать ({:.1} МБ)", mb))
+                        egui::RichText::new(label)
                             .strong()
                             .color(Color32::BLACK)
                     )
@@ -737,7 +764,7 @@ impl eframe::App for LauncherApp {
 
                 // PLAY button - right aligned, large & bold green!
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let can_play = !self.is_busy && (self.game_ready || self.outdated_files.is_empty());
+                    let can_play = !self.is_busy && exe_exists && (self.game_ready || self.outdated_files.is_empty());
                     let btn_play = egui::Button::new(
                         egui::RichText::new("▶  ИГРАТЬ")
                             .size(17.0)
@@ -748,7 +775,16 @@ impl eframe::App for LauncherApp {
                     .min_size(egui::vec2(165.0, 38.0))
                     .rounding(6.0);
 
-                    if ui.add_enabled(can_play, btn_play).clicked() {
+                    let mut resp_play = ui.add_enabled(can_play, btn_play);
+                    if !exe_exists {
+                        resp_play = resp_play.on_disabled_hover_text("Клиент игры не найден. Нажмите 'Быстрая проверка' или 'Скачать клиент', чтобы установить игру.");
+                    } else if self.is_busy {
+                        resp_play = resp_play.on_disabled_hover_text("Выполняется операция (проверка или скачивание)...");
+                    } else if !self.outdated_files.is_empty() {
+                        resp_play = resp_play.on_disabled_hover_text("Требуется скачать обновления перед запуском игры.");
+                    }
+
+                    if can_play && resp_play.clicked() {
                         let _ = self.tx_cmd.send(WorkerCommand::Launch);
                     }
                 });
@@ -911,6 +947,13 @@ fn worker_thread_loop(
                     }
                 }
 
+                if !config.game_dir.exists() {
+                    let _ = tx_event.send(WorkerEvent::Log(format!(
+                        "Папка '{}' не существует (будет создана автоматически при скачивании).",
+                        config.game_dir.display()
+                    )));
+                }
+
                 let total = all_entries.len();
                 let _ = tx_event.send(WorkerEvent::Log(format!("Начало проверки {} файлов клиента...", total)));
 
@@ -980,7 +1023,28 @@ fn worker_thread_loop(
                 let _ = tx_event.send(WorkerEvent::Log(format!("Начало скачивания {} файлов...", total_files)));
 
                 let temp_dir = config.game_dir.join(".ew_temp");
-                let _ = fs::create_dir_all(&temp_dir);
+                if let Err(e) = fs::create_dir_all(&temp_dir) {
+                    let _ = tx_event.send(WorkerEvent::Error(format!(
+                        "Не удалось создать директорию {}: {}. Проверьте путь и права доступа.",
+                        config.game_dir.display(), e
+                    )));
+                    continue;
+                }
+
+                // Check write permissions in target directory
+                let test_path = temp_dir.join(".write_test");
+                match File::create(&test_path) {
+                    Ok(_) => {
+                        let _ = fs::remove_file(test_path);
+                    }
+                    Err(e) => {
+                        let _ = tx_event.send(WorkerEvent::Error(format!(
+                            "Нет прав на запись в папку {}: {}. Проверьте права доступа к директории.",
+                            config.game_dir.display(), e
+                        )));
+                        continue;
+                    }
+                }
 
                 for (idx, entry) in files.iter().enumerate() {
                     let file_url = format!("{}{}.lzma", entry.base_url, entry.filename);
