@@ -13,8 +13,16 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 fn is_linux_patch_file(name: &str) -> bool {
-    let lower = name.to_lowercase().replace('\\', "/");
-    lower == "system/d3ddrv.dll" || lower == "system/nwindow.dll"
+    #[cfg(target_os = "windows")]
+    {
+        let _ = name;
+        false
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let lower = name.to_lowercase().replace('\\', "/");
+        lower == "system/d3ddrv.dll" || lower == "system/nwindow.dll"
+    }
 }
 
 pub fn worker_thread_loop(rx_cmd: Receiver<WorkerCommand>, tx_event: Sender<WorkerEvent>) {
