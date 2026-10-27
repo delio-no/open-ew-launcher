@@ -1,6 +1,6 @@
 [package]
 name = "open-ew-launcher"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Open EndlessWar Community"]
 description = "Fast, lightweight native launcher and updater for MMORPG Endless War (Lineage 2 client)"
