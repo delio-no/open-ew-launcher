@@ -639,11 +639,29 @@ impl eframe::App for LauncherApp {
                     if ui
                         .checkbox(
                             &mut self.config.auto_update,
-                            "Автообновление (проверка и скачивание при старте)",
+                            "Автообновление",
                         )
+                        .on_hover_text("Автоматическая проверка и скачивание файлов при старте лаунчера")
                         .changed()
                     {
                         self.config.save();
+                    }
+
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        ui.add_space(8.0);
+                        if ui
+                            .checkbox(
+                                &mut self.config.preserve_linux_patches,
+                                "Защита Linux-патчей",
+                            )
+                            .on_hover_text(
+                                "Не перезаписывать пропатченные D3DDrv.dll и NWindow.dll серверными файлами (устраняет сбои DirectDraw и YetiLoader в Wine/PortProton)",
+                            )
+                            .changed()
+                        {
+                            self.config.save();
+                        }
                     }
 
                     let exe_exists = self

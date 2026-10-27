@@ -12,6 +12,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+fn is_linux_patch_file(name: &str) -> bool {
+    let lower = name.to_lowercase().replace('\\', "/");
+    lower == "system/d3ddrv.dll" || lower == "system/nwindow.dll"
+}
+
 pub fn worker_thread_loop(rx_cmd: Receiver<WorkerCommand>, tx_event: Sender<WorkerEvent>) {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(15))
@@ -132,7 +137,14 @@ pub fn worker_thread_loop(rx_cmd: Receiver<WorkerCommand>, tx_event: Sender<Work
                     let full_path = game_dir.join(&entry.filename);
                     let mut is_outdated = false;
 
-                    if !full_path.exists() {
+                    if config.preserve_linux_patches
+                        && is_linux_patch_file(&entry.filename)
+                        && full_path.exists()
+                    {
+                        // File exists and Linux compatibility protection is active:
+                        // Keep patched Linux version intact (do not flag as outdated)
+                        is_outdated = false;
+                    } else if !full_path.exists() {
                         is_outdated = true;
                     } else if let Ok(meta) = full_path.metadata() {
                         if meta.len() != entry.size {
@@ -234,6 +246,18 @@ pub fn worker_thread_loop(rx_cmd: Receiver<WorkerCommand>, tx_event: Sender<Work
                         let _ = fs::create_dir_all(parent);
                     }
 
+                    if config.preserve_linux_patches
+                        && is_linux_patch_file(&entry.filename)
+                        && dest_path.exists()
+                    {
+                        let _ = tx_event.send(WorkerEvent::Log(format!(
+                            "Пропуск {}: сохранена пропатченная версия для Linux",
+                            entry.filename
+                        )));
+                        bytes_done += entry.size;
+                        continue;
+                    }
+
                     let elapsed_secs = start_time.elapsed().as_secs_f64().max(0.001);
                     let speed = (bytes_done as f64 / 1024.0) / elapsed_secs;
 
@@ -276,6 +300,20 @@ pub fn worker_thread_loop(rx_cmd: Receiver<WorkerCommand>, tx_event: Sender<Work
                             if decompress_ok {
                                 let _ = fs::rename(&temp_out, &dest_path);
                                 bytes_done += entry.size;
+
+                                #[cfg(not(target_os = "windows"))]
+                                if config.preserve_linux_patches
+                                    && is_linux_patch_file(&entry.filename)
+                                {
+                                    let linux_patch = dest_path.with_extension("dll.linux");
+                                    if linux_patch.exists() {
+                                        let _ = fs::copy(&linux_patch, &dest_path);
+                                        let _ = tx_event.send(WorkerEvent::Log(format!(
+                                            "Применён Linux-фикс для {}",
+                                            entry.filename
+                                        )));
+                                    }
+                                }
                             } else {
                                 let _ = tx_event.send(WorkerEvent::Error(format!(
                                     "Ошибка распаковки {}",

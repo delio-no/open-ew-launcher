@@ -18,6 +18,8 @@ pub struct AppConfig {
     pub full_check: bool,
     #[serde(default = "default_auto_update")]
     pub auto_update: bool,
+    #[serde(default = "default_preserve_linux_patches")]
+    pub preserve_linux_patches: bool,
     #[serde(default, skip_serializing)]
     pub auto_check: Option<bool>,
     #[serde(default, skip_serializing)]
@@ -26,6 +28,10 @@ pub struct AppConfig {
 
 fn default_auto_update() -> bool {
     true
+}
+
+fn default_preserve_linux_patches() -> bool {
+    cfg!(not(target_os = "windows"))
 }
 
 impl Default for AppConfig {
@@ -58,6 +64,7 @@ impl Default for AppConfig {
             lang: "ru".to_string(),
             full_check: false,
             auto_update: true,
+            preserve_linux_patches: default_preserve_linux_patches(),
             auto_check: None,
             auto_download: None,
         }
